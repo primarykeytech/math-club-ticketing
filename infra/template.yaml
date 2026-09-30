@@ -57,7 +57,7 @@ Resources:
     Properties:
       CorsConfiguration:
         AllowHeaders: [Authorization, Content-Type]
-        AllowMethods: [GET, POST, OPTIONS]
+        AllowMethods: [GET, POST, PATCH, OPTIONS]
         AllowOrigins: ['*']
       Auth:
         Authorizers:

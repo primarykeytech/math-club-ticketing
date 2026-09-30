@@ -1,6 +1,6 @@
 # Ticket Club
 
-The current front end is an interactive mock that runs as a static site. Its serverless foundation is defined in `infra/template.yaml`:
+The front end runs as an interactive mock by default and can use the deployed Cognito-protected API when configured. Its serverless foundation is defined in `infra/template.yaml`:
 
 - Amazon Cognito authenticates coaches.
 - API Gateway invokes one Python Lambda function.
@@ -26,6 +26,20 @@ sam build --template-file infra/template.yaml
 sam deploy --guided
 ```
 
-Upload the front-end files to the `SiteBucketName` output after deployment. Populate `config.js` with the `ApiUrl`, `UserPoolId`, `UserPoolClientId`, and AWS Region outputs, then set `mockMode` to `false` when the next front-end integration step is completed.
+Upload the front-end files to the `SiteBucketName` output after deployment. Then update `config.js` with the `ApiUrl`, `UserPoolId`, `UserPoolClientId`, and AWS Region outputs, and set `mockMode` to `false`:
+
+```js
+window.TICKET_CLUB_CONFIG = {
+  mockMode: false,
+  apiUrl: 'https://your-api-id.execute-api.your-region.amazonaws.com',
+  cognito: {
+    userPoolId: 'your-user-pool-id',
+    userPoolClientId: 'your-user-pool-client-id',
+    region: 'your-region'
+  }
+};
+```
+
+Create each coach in the Cognito User Pool after deployment. They will sign in with their email and temporary password, then be prompted to choose a permanent password.
 
 The template keeps both buckets private. It does not create RDS or DynamoDB resources.

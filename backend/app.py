@@ -174,6 +174,22 @@ def handler(event, _context):
                 return {"student": student}
 
             return response(201, transaction(event, create_student))
+        if method == "PATCH" and path.startswith("/students/"):
+            """Change whether an existing student appears on the active ticket board."""
+            student_id = path.removeprefix("/students/")
+            payload = request_body(event)
+            active = payload.get("active")
+            if not isinstance(active, bool):
+                raise ValueError("active must be true or false.")
+
+            def update_student(state):
+                student = next((item for item in state["students"] if item["id"] == student_id), None)
+                if student is None:
+                    raise ValueError("That student could not be found.")
+                student["active"] = active
+                return {"student": student}
+
+            return response(200, transaction(event, update_student))
         if method == "GET" and path == "/prizes":
             state, _ = read_state()
             return response(200, {"prizes": state["prizes"]})

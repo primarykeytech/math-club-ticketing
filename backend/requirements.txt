@@ -1,2 +1,3 @@
+# Pin the AWS SDK so SAM builds and Lambda deployments use a known-compatible version.
 boto3>=1.34,<2.0
 botocore>=1.34,<2.0
