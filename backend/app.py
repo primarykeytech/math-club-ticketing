@@ -17,6 +17,7 @@ MAX_RETRIES = 4
 
 
 def response(status_code, body):
+    """Build the standard JSON response returned to API Gateway and the browser."""
     return {
         "statusCode": status_code,
         "headers": {"Content-Type": "application/json", "Cache-Control": "no-store"},
@@ -25,10 +26,12 @@ def response(status_code, body):
 
 
 def error(status_code, message):
+    """Return a consistently shaped error message with the requested HTTP status."""
     return response(status_code, {"message": message})
 
 
 def request_body(event):
+    """Read and validate the JSON body sent by the browser in a POST request."""
     try:
         return json.loads(event.get("body") or "{}")
     except json.JSONDecodeError as exc:
@@ -36,10 +39,12 @@ def request_body(event):
 
 
 def initial_state():
+    """Provide an empty starting data structure for a brand-new ticket bucket."""
     return {"students": [], "prizes": [], "schemaVersion": 1}
 
 
 def read_state():
+    """Load the latest students and prizes snapshot from S3, including its version tag."""
     try:
         item = s3.get_object(Bucket=BUCKET, Key=STATE_KEY)
         return json.loads(item["Body"].read()), item["ETag"]
@@ -50,6 +55,7 @@ def read_state():
 
 
 def write_state(state, etag):
+    """Save a new state snapshot only when the S3 version has not changed underneath us."""
     kwargs = {
         "Bucket": BUCKET,
         "Key": STATE_KEY,
@@ -65,10 +71,12 @@ def write_state(state, etag):
 
 
 def is_conflict(exc):
+    """Identify S3 errors that mean another request changed the snapshot first."""
     return exc.response["Error"]["Code"] in {"PreconditionFailed", "ConditionalRequestConflict", "412", "409"}
 
 
 def save_event(event):
+    """Store one immutable ticket-history event as its own JSON file in S3."""
     key = f"{EVENT_PREFIX}{event['timestamp'][:10]}/{event['id']}.json"
     s3.put_object(
         Bucket=BUCKET,
@@ -81,12 +89,13 @@ def save_event(event):
 
 
 def coach_name(event):
+    """Extract the signed-in coach's identifying name from Cognito's JWT claims."""
     claims = event.get("requestContext", {}).get("authorizer", {}).get("jwt", {}).get("claims", {})
     return claims.get("email") or claims.get("cognito:username") or "Coach"
 
 
 def transaction(event, update):
-    """Optimistically updates state, retrying if another coach writes at the same time."""
+    """Apply one change safely, retrying when two coaches update the S3 snapshot together."""
     for _ in range(MAX_RETRIES):
         state, etag = read_state()
         result = update(state)
@@ -103,6 +112,7 @@ def transaction(event, update):
 
 
 def require_string(payload, field):
+    """Return a required non-empty text field, or explain what the caller needs to fix."""
     value = payload.get(field)
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{field} is required.")
@@ -110,6 +120,7 @@ def require_string(payload, field):
 
 
 def require_positive_int(payload, field):
+    """Return a required whole-number value greater than zero, rejecting invalid input."""
     value = payload.get(field)
     if not isinstance(value, int) or isinstance(value, bool) or value < 1:
         raise ValueError(f"{field} must be a whole number of at least 1.")
@@ -117,6 +128,7 @@ def require_positive_int(payload, field):
 
 
 def new_event(student_id, amount, event_type, reason, actor):
+    """Create the complete audit-log record for a ticket award or a prize redemption."""
     return {
         "id": str(uuid.uuid4()),
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -129,6 +141,7 @@ def new_event(student_id, amount, event_type, reason, actor):
 
 
 def list_events(student_id=None):
+    """Read event files from S3, optionally keeping only one student's history."""
     events = []
     paginator = s3.get_paginator("list_objects_v2")
     for page in paginator.paginate(Bucket=BUCKET, Prefix=EVENT_PREFIX):
@@ -140,6 +153,7 @@ def list_events(student_id=None):
 
 
 def handler(event, _context):
+    """Route each API Gateway request to the matching Ticket Club operation."""
     method = event.get("requestContext", {}).get("http", {}).get("method", "")
     path = event.get("rawPath", "")
     query = event.get("queryStringParameters") or {}
