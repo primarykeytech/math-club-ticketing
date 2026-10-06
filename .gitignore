@@ -1,0 +1,10 @@
+# Runtime configuration is intentionally deployed but not committed.
+config.js
+
+# Generated deployment/build artifacts.
+.aws-sam/
+infra/packaged-template.yaml
+
+# Python cache files.
+__pycache__/
+*.py[cod]

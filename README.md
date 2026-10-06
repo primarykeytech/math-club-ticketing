@@ -9,6 +9,12 @@ The front end runs as an interactive mock by default and can use the deployed Co
 
 ## Local mock preview
 
+Copy the committed configuration template before opening the app:
+
+```powershell
+Copy-Item config.example.js config.js
+```
+
 Open `index.html`, or run:
 
 ```powershell
@@ -26,7 +32,7 @@ sam build --template-file infra/template.yaml
 sam deploy --guided
 ```
 
-Upload the front-end files to the `SiteBucketName` output after deployment. Then update `config.js` with the `ApiUrl`, `UserPoolId`, `UserPoolClientId`, and AWS Region outputs, and set `mockMode` to `false`:
+Upload the front-end files and a non-committed `config.js` to the `SiteBucketName` output after deployment. Start with `config.example.js`, then update `config.js` with the `ApiUrl`, `UserPoolId`, `UserPoolClientId`, and AWS Region outputs, and set `mockMode` to `false`:
 
 ```js
 window.TICKET_CLUB_CONFIG = {
@@ -41,5 +47,7 @@ window.TICKET_CLUB_CONFIG = {
 ```
 
 Create each coach in the Cognito User Pool after deployment. They will sign in with their email and temporary password, then be prompted to choose a permanent password.
+
+`config.js` is a browser-visible runtime file, so it must never contain AWS access keys, passwords, tokens, or a Cognito client secret. The User Pool client in this project is intentionally public and has no client secret.
 
 The template keeps both buckets private. It does not create RDS or DynamoDB resources.
