@@ -158,6 +158,10 @@ def handler(event, _context):
     path = event.get("rawPath", "")
     query = event.get("queryStringParameters") or {}
     try:
+        # Keep browser CORS preflight requests unauthenticated. API Gateway adds
+        # the matching Access-Control headers from the template's CORS settings.
+        if method == "OPTIONS":
+            return {"statusCode": 204, "headers": {}, "body": ""}
         if method == "GET" and path == "/health":
             return response(200, {"ok": True})
         if method == "GET" and path == "/students":

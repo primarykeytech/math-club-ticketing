@@ -133,7 +133,10 @@ async function refreshLiveData() {
 
 function navigation() {
   const items = [['board', '▦', 'Ticket board'], ['students', '♟', 'Students'], ['prizes', '🎁', 'Prizes'], ['history', '◷', 'History']];
-  return `<aside class="sidebar"><div class="nav-label">Math club</div>${items.map(([id, icon, label]) => `<button class="nav-button ${state.page === id ? 'active' : ''}" data-page="${id}" type="button"><span class="nav-icon">${icon}</span>${label}</button>`).join('')}<div class="sidebar-note"><strong>Mock-data mode</strong>Your changes stay in this browser session. AWS data storage comes next.</div></aside>`;
+  const modeNote = liveMode
+    ? '<strong>Live data mode</strong>Changes are saved to the protected Ticket Club ledger.'
+    : '<strong>Mock-data mode</strong>Your changes stay in this browser session. AWS data storage comes next.';
+  return `<aside class="sidebar"><div class="nav-label">Math club</div>${items.map(([id, icon, label]) => `<button class="nav-button ${state.page === id ? 'active' : ''}" data-page="${id}" type="button"><span class="nav-icon">${icon}</span>${label}</button>`).join('')}<div class="sidebar-note">${modeNote}</div></aside>`;
 }
 
 function heading(title, subtitle, action = '') { return `<div class="page-heading"><div><h1>${title}</h1><p>${subtitle}</p></div>${action}</div>`; }

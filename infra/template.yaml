@@ -81,6 +81,12 @@ Resources:
       Policies:
         - S3CrudPolicy: { BucketName: !Ref TicketDataBucket }
       Events:
+        ApiOptions:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TicketApi
+            Path: /{proxy+}
+            Method: OPTIONS
         ApiRoot:
           Type: HttpApi
           Properties:
