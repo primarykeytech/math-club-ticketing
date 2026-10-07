@@ -246,6 +246,25 @@ def handler(event, _context):
                 return {"students": active_students, "events": events}
 
             return response(201, transaction(event, award_all))
+        if method == "POST" and path == "/ticket-deductions":
+            payload = request_body(event)
+            student_id = require_string(payload, "studentId")
+            amount = require_positive_int(payload, "amount")
+            reason = require_string(payload, "reason")
+            actor = coach_name(event)
+
+            def deduct(state):
+                """Remove tickets from one active student without allowing a negative balance."""
+                student = next((item for item in state["students"] if item["id"] == student_id and item["active"]), None)
+                if student is None:
+                    raise ValueError("That active student could not be found.")
+                if student["balance"] < amount:
+                    raise ValueError(f"{student['name']} only has {student['balance']} tickets.")
+                student["balance"] -= amount
+                ledger_event = new_event(student_id, -amount, "deduct", reason, actor)
+                return {"student": student, "event": ledger_event}
+
+            return response(201, transaction(event, deduct))
         if method == "POST" and path == "/redemptions":
             payload = request_body(event)
             student_id = require_string(payload, "studentId")

@@ -9,6 +9,7 @@ Ticket Club is a small web app for math-club coaches to award virtual tickets, m
 - Displays active students alphabetically, with their current ticket balances.
 - Provides Quick Add buttons for **+1**, **+5**, **+10**, and **+20** tickets.
 - Supports a custom ticket award with a required note.
+- Supports a dedicated ticket deduction with a required reason while preventing balances below zero.
 - Supports **Award all students**, which gives every active student the same number of tickets and note (for example, 20 tickets for “Completed practice test”). Each student receives their own history entry.
 - Shows simple at-a-glance counts for active students, tickets awarded, and available prize inventory.
 
@@ -22,7 +23,7 @@ Ticket Club is a small web app for math-club coaches to award virtual tickets, m
 
 ### History and security
 
-- Records ticket additions and prize redemptions as individual ledger events.
+- Records ticket additions, deductions, and prize redemptions as individual ledger events.
 - Filters history by student and activity type.
 - Exports the visible ticket-history ledger as a CSV file.
 - Uses Amazon Cognito for coach sign-in, initial temporary-password replacement, and token refresh.
@@ -57,7 +58,7 @@ The CloudFormation template creates:
 
 - An Amazon Cognito User Pool and public browser client for coach accounts.
 - An HTTP API Gateway endpoint protected by Cognito JWT authorization.
-- One Python Lambda function for students, prizes, awards, bulk awards, redemptions, and history.
+- One Python Lambda function for students, prizes, awards, bulk awards, deductions, redemptions, and history.
 - A private, versioned S3 data bucket. It stores a current state snapshot plus one immutable JSON object for each ledger event.
 - A private S3 site bucket and CloudFront distribution with Origin Access Control.
 
