@@ -95,7 +95,7 @@ def coach_name(event):
 
 
 def transaction(event, update):
-    """Apply one change safely, retrying when two coaches update the S3 snapshot together."""
+    """Apply a change safely, retrying when two coaches update the S3 snapshot together."""
     for _ in range(MAX_RETRIES):
         state, etag = read_state()
         result = update(state)
@@ -105,8 +105,9 @@ def transaction(event, update):
             if is_conflict(exc):
                 continue
             raise
-        if result.get("event"):
-            save_event(result["event"])
+        events = result.get("events") or ([result["event"]] if result.get("event") else [])
+        for ledger_event in events:
+            save_event(ledger_event)
         return result
     raise RuntimeError("Another update is in progress. Please try again.")
 
@@ -227,6 +228,24 @@ def handler(event, _context):
                 return {"student": student, "event": ledger_event}
 
             return response(201, transaction(event, award))
+        if method == "POST" and path == "/ticket-events/batch":
+            payload = request_body(event)
+            amount = require_positive_int(payload, "amount")
+            reason = require_string(payload, "reason")
+            actor = coach_name(event)
+
+            def award_all(state):
+                """Add the shared award to every currently active student in one state update."""
+                active_students = [student for student in state["students"] if student["active"]]
+                if not active_students:
+                    raise ValueError("There are no active students to award.")
+                events = []
+                for student in active_students:
+                    student["balance"] += amount
+                    events.append(new_event(student["id"], amount, "earn", reason, actor))
+                return {"students": active_students, "events": events}
+
+            return response(201, transaction(event, award_all))
         if method == "POST" and path == "/redemptions":
             payload = request_body(event)
             student_id = require_string(payload, "studentId")
