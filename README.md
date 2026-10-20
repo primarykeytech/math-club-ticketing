@@ -19,6 +19,7 @@ Ticket Club is a small web app for math-club coaches to award virtual tickets, m
 - Search the student roster, which is alphabetically ordered by default.
 - Deactivate students without deleting their ticket history; reactivate them when needed.
 - Add prizes with a ticket cost and stock quantity.
+- Build a multi-prize selection and redeem it for one student in a single transaction.
 - Redeem prizes for active students when they have enough tickets and the prize is in stock.
 
 ### History and security

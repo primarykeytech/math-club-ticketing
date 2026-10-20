@@ -78,7 +78,12 @@ input, select { height: 39px; width: 100%; padding: 0 11px; border: 1px solid #d
 .prize-card p { min-height: 38px; margin: 0; color: #64748b; font-size: 13px; line-height: 1.45; }
 .prize-cost { margin: 15px 0; color: #4338ca; font-size: 18px; font-weight: 750; }
 .prize-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
+.prize-actions { display: flex; gap: 6px; }
 .stock { color: #64748b; font-size: 12px; }
+
+.cart-summary { display: grid; gap: 8px; margin: -4px 0 18px; padding: 12px; border-radius: 9px; background: #f8fafc; color: #334155; font-size: 14px; }
+.cart-summary > div { display: flex; justify-content: space-between; gap: 12px; }
+.cart-total { padding-top: 9px; border-top: 1px solid #dbe2ea; color: #172554; }
 
 .change.positive { color: #15803d; font-weight: 750; }.change.negative { color: #c2410c; font-weight: 750; }
 .activity-reason { display: block; margin-top: 3px; color: #94a3b8; font-size: 12px; }

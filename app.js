@@ -23,6 +23,7 @@ const state = {
     { id: 4, date: '2026-09-22T16:55:00', studentId: 'leo', type: 'earn', amount: 20, reason: 'Completed logic puzzle', coach: 'Coach Morgan' }
   ],
   filters: { student: 'all', type: 'all', search: '' },
+  cart: {},
   modal: null,
   auth: JSON.parse(sessionStorage.getItem(authStorageKey) || 'null'),
   loading: false
@@ -122,6 +123,11 @@ async function refreshLiveData() {
     const [students, prizes, history] = await Promise.all([apiRequest('/students'), apiRequest('/prizes'), apiRequest('/history')]);
     state.students = students.students;
     state.prizes = prizes.prizes.map((prize) => ({ ...prize, icon: '🎁', description: 'A reward students can redeem with tickets.' }));
+    Object.keys(state.cart).forEach((prizeId) => {
+      const prize = state.prizes.find((item) => item.id === prizeId);
+      if (!prize || prize.stock < 1) delete state.cart[prizeId];
+      else state.cart[prizeId] = Math.min(state.cart[prizeId], prize.stock);
+    });
     state.history = history.events.map((event) => ({ ...event, date: event.timestamp, coach: event.actor }));
   } catch (error) {
     toast(error.message);
@@ -141,6 +147,9 @@ function navigation() {
 
 function heading(title, subtitle, action = '') { return `<div class="page-heading"><div><h1>${title}</h1><p>${subtitle}</p></div>${action}</div>`; }
 function alphabeticalStudents(students) { return [...students].sort((first, second) => first.name.localeCompare(second.name, undefined, { sensitivity: 'base' })); }
+function cartItems() { return Object.entries(state.cart).map(([prizeId, quantity]) => ({ prize: state.prizes.find((item) => item.id === prizeId), quantity })).filter((item) => item.prize && item.quantity > 0); }
+function cartTicketTotal() { return cartItems().reduce((total, item) => total + (item.prize.cost * item.quantity), 0); }
+function cartItemCount() { return cartItems().reduce((total, item) => total + item.quantity, 0); }
 function boardPage() {
   const active = alphabeticalStudents(state.students.filter((student) => student.active));
   return `${heading('Ticket board', 'Quickly award tickets during today’s math club.', '<div class="heading-actions"><button class="button secondary" data-action="open-award-all" type="button">＋ Award all students</button><button class="button danger" data-action="open-deduct" type="button">− Deduct tickets</button><button class="button primary" data-action="open-adjust" type="button">＋ Add custom tickets</button></div>')}
@@ -154,7 +163,8 @@ function studentsPage() {
   return `${heading('Students', 'Add, update, or deactivate students.', '<button class="button primary" data-action="open-student" type="button">＋ Add student</button>')}<section class="panel"><div class="filters"><label class="field">Search students<input data-filter="search" value="${escapeHtml(state.filters.search)}" placeholder="Search by name" /></label></div><div class="table-wrap"><table><thead><tr><th>Student</th><th>Grade</th><th>Status</th><th>Tickets</th><th></th></tr></thead><tbody>${students.map((student) => `<tr data-student-row data-student-name="${escapeHtml(student.name.toLowerCase())}" ${student.name.toLowerCase().includes(term) ? '' : 'hidden'}><td class="student-name">${escapeHtml(student.name)}</td><td>Grade ${student.grade}</td><td><span class="status ${student.active ? 'active' : 'inactive'}">${student.active ? 'Active' : 'Inactive'}</span></td><td class="balance">${student.balance}</td><td><button class="button secondary small" data-action="toggle-student" data-student="${student.id}" type="button">${student.active ? 'Deactivate' : 'Reactivate'}</button></td></tr>`).join('')}<tr class="empty" data-student-empty ${matchingStudents.length ? 'hidden' : ''}><td colspan="5">No students match your search.</td></tr></tbody></table></div></section>`;
 }
 function prizesPage() {
-  return `${heading('Prize catalog', 'Set ticket costs and redeem rewards for students.', '<button class="button primary" data-action="open-prize" type="button">＋ Add prize</button>')}<div class="prize-grid">${state.prizes.map((prize) => `<article class="prize-card"><div class="prize-icon">${prize.icon}</div><h2>${escapeHtml(prize.name)}</h2><p>${escapeHtml(prize.description)}</p><div class="prize-cost">${prize.cost} tickets</div><div class="prize-footer"><span class="stock">${prize.stock} remaining</span><button class="button secondary small" data-action="open-redeem" data-prize="${prize.id}" type="button" ${prize.stock === 0 ? 'disabled' : ''}>Redeem</button></div></article>`).join('')}</div>`;
+  const selectedCount = cartItemCount();
+  return `${heading('Prize catalog', 'Choose one or more rewards, then redeem them together for one student.', `<div class="heading-actions"><button class="button secondary" data-action="open-cart" type="button" ${selectedCount ? '' : 'disabled'}>Redeem selection (${selectedCount})</button><button class="button primary" data-action="open-prize" type="button">＋ Add prize</button></div>`)}<div class="prize-grid">${state.prizes.map((prize) => { const quantity = state.cart[prize.id] || 0; return `<article class="prize-card"><div class="prize-icon">${prize.icon}</div><h2>${escapeHtml(prize.name)}</h2><p>${escapeHtml(prize.description)}</p><div class="prize-cost">${prize.cost} tickets</div><div class="prize-footer"><span class="stock">${prize.stock} remaining${quantity ? ` · ${quantity} selected` : ''}</span><div class="prize-actions"><button class="button secondary small" data-action="remove-from-cart" data-prize="${prize.id}" type="button" ${quantity ? '' : 'disabled'}>−</button><button class="button secondary small" data-action="add-to-cart" data-prize="${prize.id}" type="button" ${quantity >= prize.stock ? 'disabled' : ''}>Add</button></div></div></article>`; }).join('')}</div>`;
 }
 function historyPage() {
   const events = state.history.filter((event) => (state.filters.student === 'all' || event.studentId === state.filters.student) && (state.filters.type === 'all' || event.type === state.filters.type));
@@ -167,6 +177,7 @@ function modal() {
   if (state.modal.kind === 'award-all') { const count = state.students.filter((student) => student.active).length; return `<div class="modal-backdrop" role="presentation"><form class="modal" data-form="award-all"><h2>Award all students</h2><p>Give the same ticket award to all ${count} active student${count === 1 ? '' : 's'}. Each award will appear in that student’s history.</p><div class="modal-form"><label class="field">Tickets per student<input class="amount-input" name="amount" type="number" min="1" value="20" required /></label><label class="field">Reason<input name="reason" placeholder="e.g. Completed practice test" required /></label><div class="form-error" aria-live="polite"></div></div><div class="modal-actions"><button class="button secondary" data-action="close-modal" type="button">Cancel</button><button class="button primary" type="submit">Award all students</button></div></form></div>`; }
   if (state.modal.kind === 'student') return `<div class="modal-backdrop" role="presentation"><form class="modal" data-form="student"><h2>Add student</h2><p>Add a student to the ticket board.</p><div class="modal-form"><label class="field">Student name<input name="name" placeholder="Full name" required /></label><label class="field">Grade<select name="grade"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label><div class="form-error" aria-live="polite"></div></div><div class="modal-actions"><button class="button secondary" data-action="close-modal" type="button">Cancel</button><button class="button primary" type="submit">Add student</button></div></form></div>`;
   if (state.modal.kind === 'prize') return `<div class="modal-backdrop" role="presentation"><form class="modal" data-form="prize"><h2>Add prize</h2><p>Create a reward students can redeem with tickets.</p><div class="modal-form"><label class="field">Prize name<input name="name" placeholder="e.g. Puzzle cube" required /></label><label class="field">Ticket cost<input name="cost" type="number" min="1" value="25" required /></label><label class="field">Starting stock<input name="stock" type="number" min="0" value="10" required /></label><div class="form-error" aria-live="polite"></div></div><div class="modal-actions"><button class="button secondary" data-action="close-modal" type="button">Cancel</button><button class="button primary" type="submit">Add prize</button></div></form></div>`;
+  if (state.modal.kind === 'redeem-cart') { const items = cartItems(); const total = cartTicketTotal(); const options = alphabeticalStudents(state.students.filter((student) => student.active)).map((student) => `<option value="${student.id}">${escapeHtml(student.name)} — ${student.balance} tickets</option>`).join(''); return `<div class="modal-backdrop" role="presentation"><form class="modal" data-form="redeem-cart"><h2>Redeem selected prizes</h2><p>Choose the student who is receiving these rewards.</p><div class="cart-summary">${items.map(({ prize, quantity }) => `<div><span>${escapeHtml(prize.name)} × ${quantity}</span><strong>${prize.cost * quantity} tickets</strong></div>`).join('')}<div class="cart-total"><span>Total</span><strong>${total} tickets</strong></div></div><div class="modal-form"><label class="field">Student<select name="studentId">${options}</select></label><div class="form-error" aria-live="polite"></div></div><div class="modal-actions"><button class="button secondary" data-action="close-modal" type="button">Cancel</button><button class="button primary" type="submit">Redeem selection</button></div></form></div>`; }
   const prize = state.prizes.find((item) => item.id === state.modal.prizeId); const options = alphabeticalStudents(state.students.filter((student) => student.active)).map((student) => `<option value="${student.id}">${escapeHtml(student.name)} — ${student.balance} tickets</option>`).join(''); return `<div class="modal-backdrop" role="presentation"><form class="modal" data-form="redeem"><h2>Redeem ${escapeHtml(prize.name)}</h2><p>This reward costs <strong>${prize.cost} tickets</strong> and has ${prize.stock} remaining.</p><div class="modal-form"><label class="field">Student<select name="studentId">${options}</select></label><div class="form-error" aria-live="polite"></div></div><div class="modal-actions"><button class="button secondary" data-action="close-modal" type="button">Cancel</button><button class="button primary" type="submit">Redeem prize</button></div></form></div>`;
 }
 function authPage() {
@@ -214,6 +225,9 @@ app.addEventListener('click', async (event) => {
     if (action === 'open-student') { state.modal = { kind: 'student' }; render(); }
     if (action === 'open-prize') { state.modal = { kind: 'prize' }; render(); }
     if (action === 'open-redeem') { state.modal = { kind: 'redeem', prizeId: button.dataset.prize }; render(); }
+    if (action === 'add-to-cart') { const prize = state.prizes.find((item) => item.id === button.dataset.prize); const quantity = state.cart[prize.id] || 0; if (quantity < prize.stock) state.cart[prize.id] = quantity + 1; render(); }
+    if (action === 'remove-from-cart') { const prizeId = button.dataset.prize; const quantity = state.cart[prizeId] || 0; if (quantity <= 1) delete state.cart[prizeId]; else state.cart[prizeId] = quantity - 1; render(); }
+    if (action === 'open-cart') { if (!cartItemCount()) { toast('Select at least one prize first.'); return; } state.modal = { kind: 'redeem-cart' }; render(); }
     if (action === 'close-modal') { state.modal = null; render(); }
     if (action === 'toggle-student') {
       const student = studentById(button.dataset.student);
@@ -317,6 +331,16 @@ app.addEventListener('submit', async (event) => {
       state.modal = null;
       if (liveMode) await refreshLiveData(); else render();
       toast(`${prize.name} redeemed for ${student.name}`);
+    }
+    if (form.dataset.form === 'redeem-cart') {
+      const student = studentById(data.get('studentId')); const items = cartItems(); const total = cartTicketTotal();
+      if (!items.length) { error.textContent = 'Select at least one prize first.'; return; }
+      if (!liveMode && student.balance < total) { error.textContent = `${student.name} needs ${total - student.balance} more tickets.`; return; }
+      if (liveMode) await apiRequest('/redemptions/batch', { method: 'POST', body: JSON.stringify({ studentId: student.id, items: items.map(({ prize, quantity }) => ({ prizeId: prize.id, quantity })) }) });
+      else items.forEach(({ prize, quantity }) => { addEvent(student.id, -(prize.cost * quantity), `Redeemed: ${quantity} × ${prize.name}`, 'redeem'); prize.stock -= quantity; });
+      state.cart = {}; state.modal = null;
+      if (liveMode) await refreshLiveData(); else render();
+      toast(`${items.length} prize type${items.length === 1 ? '' : 's'} redeemed for ${student.name}`);
     }
   } catch (exception) { error.textContent = exception.message; }
 });

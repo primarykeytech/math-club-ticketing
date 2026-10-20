@@ -286,6 +286,47 @@ def handler(event, _context):
                 return {"student": student, "prize": prize, "event": ledger_event}
 
             return response(201, transaction(event, redeem))
+        if method == "POST" and path == "/redemptions/batch":
+            payload = request_body(event)
+            student_id = require_string(payload, "studentId")
+            requested_items = payload.get("items")
+            if not isinstance(requested_items, list) or not requested_items:
+                raise ValueError("items must contain at least one prize.")
+            quantities = {}
+            for requested_item in requested_items:
+                if not isinstance(requested_item, dict):
+                    raise ValueError("Each prize selection must be an object.")
+                prize_id = require_string(requested_item, "prizeId")
+                quantity = require_positive_int(requested_item, "quantity")
+                quantities[prize_id] = quantities.get(prize_id, 0) + quantity
+            actor = coach_name(event)
+
+            def redeem_batch(state):
+                """Redeem several selected prize types together for one active student."""
+                student = next((item for item in state["students"] if item["id"] == student_id and item["active"]), None)
+                if student is None:
+                    raise ValueError("That active student could not be found.")
+                selections = []
+                total_cost = 0
+                for prize_id, quantity in quantities.items():
+                    prize = next((item for item in state["prizes"] if item["id"] == prize_id and item["active"]), None)
+                    if prize is None:
+                        raise ValueError("One of the selected prizes could not be found.")
+                    if prize["stock"] < quantity:
+                        raise ValueError(f"Only {prize['stock']} of {prize['name']} remain.")
+                    selections.append((prize, quantity))
+                    total_cost += prize["cost"] * quantity
+                if student["balance"] < total_cost:
+                    raise ValueError(f"{student['name']} needs {total_cost - student['balance']} more tickets.")
+                student["balance"] -= total_cost
+                events = []
+                for prize, quantity in selections:
+                    prize["stock"] -= quantity
+                    label = prize["name"] if quantity == 1 else f"{quantity} × {prize['name']}"
+                    events.append(new_event(student_id, -(prize["cost"] * quantity), "redeem", f"Redeemed: {label}", actor))
+                return {"student": student, "prizes": [prize for prize, _ in selections], "events": events}
+
+            return response(201, transaction(event, redeem_batch))
         if method == "GET" and path == "/history":
             return response(200, {"events": list_events(query.get("studentId"))})
         return error(404, "Route not found.")
