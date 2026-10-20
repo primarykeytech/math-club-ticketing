@@ -58,9 +58,11 @@ tr:hover td { background: #fcfcff; }
 .student-name { color: #1e293b; font-weight: 750; }
 .student-meta { display: block; margin-top: 3px; color: #94a3b8; font-size: 12px; }
 .balance { color: #312e81; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ticket-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.ticket-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .quick-ticket { min-width: 40px; min-height: 31px; border: 1px solid #bbf7d0; border-radius: 7px; color: #15803d; background: #f0fdf4; font-size: 12px; font-weight: 750; }
 .quick-ticket:hover { background: #dcfce7; }
+.quick-ticket.deduct { border-color: #fecaca; color: #b91c1c; background: #fef2f2; }
+.quick-ticket.deduct:hover { background: #fee2e2; }
 .quick-ticket.custom { border-color: #c7d2fe; color: #4338ca; background: #eef2ff; }
 
 .filters { display: grid; grid-template-columns: minmax(180px, 1.5fr) repeat(2, minmax(130px, .7fr)); gap: 12px; padding: 16px 18px; border-bottom: 1px solid #edf0f5; }

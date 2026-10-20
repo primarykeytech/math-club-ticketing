@@ -145,12 +145,13 @@ function boardPage() {
   const active = alphabeticalStudents(state.students.filter((student) => student.active));
   return `${heading('Ticket board', 'Quickly award tickets during today’s math club.', '<div class="heading-actions"><button class="button secondary" data-action="open-award-all" type="button">＋ Award all students</button><button class="button danger" data-action="open-deduct" type="button">− Deduct tickets</button><button class="button primary" data-action="open-adjust" type="button">＋ Add custom tickets</button></div>')}
   <div class="metrics"><div class="metric"><div class="metric-label">Active students</div><div class="metric-value">${active.length}</div><div class="metric-detail">Ready for today’s club</div></div><div class="metric"><div class="metric-label">Tickets awarded</div><div class="metric-value">${totalAwarded()}</div><div class="metric-detail">In this demo ledger</div></div><div class="metric"><div class="metric-label">Available prizes</div><div class="metric-value">${state.prizes.length}</div><div class="metric-detail">${state.prizes.reduce((sum, prize) => sum + prize.stock, 0)} items in stock</div></div></div>
-  <section class="panel"><div class="panel-header"><h2>Students</h2><button class="button secondary small" data-page="students" type="button">Manage students</button></div><div class="table-wrap"><table><thead><tr><th>Student</th><th>Ticket balance</th><th>Quick add</th></tr></thead><tbody>${active.map((student) => `<tr><td><span class="student-name">${escapeHtml(student.name)}</span><span class="student-meta">Grade ${student.grade}</span></td><td class="balance">${student.balance} tickets</td><td><div class="ticket-actions"><button class="quick-ticket" data-action="quick-add" data-student="${student.id}" data-amount="1" type="button">+1</button><button class="quick-ticket" data-action="quick-add" data-student="${student.id}" data-amount="5" type="button">+5</button><button class="quick-ticket" data-action="quick-add" data-student="${student.id}" data-amount="10" type="button">+10</button><button class="quick-ticket" data-action="quick-add" data-student="${student.id}" data-amount="20" type="button">+20</button><button class="quick-ticket custom" data-action="open-adjust" data-student="${student.id}" type="button" aria-label="Custom ticket amount for ${escapeHtml(student.name)}">•••</button></div></td></tr>`).join('')}</tbody></table></div></section>`;
+  <section class="panel"><div class="panel-header"><h2>Students</h2><button class="button secondary small" data-page="students" type="button">Manage students</button></div><div class="table-wrap"><table><thead><tr><th>Student</th><th>Ticket balance</th><th>Quick actions</th></tr></thead><tbody>${active.map((student) => `<tr><td><span class="student-name">${escapeHtml(student.name)}</span><span class="student-meta">Grade ${student.grade}</span></td><td class="balance">${student.balance} tickets</td><td><div class="ticket-actions"><button class="quick-ticket" data-action="quick-add" data-student="${student.id}" data-amount="1" type="button">+1</button><button class="quick-ticket" data-action="quick-add" data-student="${student.id}" data-amount="5" type="button">+5</button><button class="quick-ticket" data-action="quick-add" data-student="${student.id}" data-amount="10" type="button">+10</button><button class="quick-ticket" data-action="quick-add" data-student="${student.id}" data-amount="20" type="button">+20</button><button class="quick-ticket deduct" data-action="quick-deduct" data-student="${student.id}" data-amount="1" type="button">−1</button><button class="quick-ticket deduct" data-action="quick-deduct" data-student="${student.id}" data-amount="5" type="button">−5</button><button class="quick-ticket deduct" data-action="quick-deduct" data-student="${student.id}" data-amount="10" type="button">−10</button><button class="quick-ticket deduct" data-action="quick-deduct" data-student="${student.id}" data-amount="20" type="button">−20</button><button class="quick-ticket custom" data-action="open-adjust" data-student="${student.id}" type="button" aria-label="Custom ticket amount for ${escapeHtml(student.name)}">•••</button></div></td></tr>`).join('')}</tbody></table></div></section>`;
 }
 function studentsPage() {
   const term = state.filters.search.toLowerCase();
-  const filtered = alphabeticalStudents(state.students.filter((student) => student.name.toLowerCase().includes(term)));
-  return `${heading('Students', 'Add, update, or deactivate students.', '<button class="button primary" data-action="open-student" type="button">＋ Add student</button>')}<section class="panel"><div class="filters"><label class="field">Search students<input data-filter="search" value="${escapeHtml(state.filters.search)}" placeholder="Search by name" /></label></div><div class="table-wrap"><table><thead><tr><th>Student</th><th>Grade</th><th>Status</th><th>Tickets</th><th></th></tr></thead><tbody>${filtered.map((student) => `<tr><td class="student-name">${escapeHtml(student.name)}</td><td>Grade ${student.grade}</td><td><span class="status ${student.active ? 'active' : 'inactive'}">${student.active ? 'Active' : 'Inactive'}</span></td><td class="balance">${student.balance}</td><td><button class="button secondary small" data-action="toggle-student" data-student="${student.id}" type="button">${student.active ? 'Deactivate' : 'Reactivate'}</button></td></tr>`).join('') || '<tr><td class="empty" colspan="5">No students match your search.</td></tr>'}</tbody></table></div></section>`;
+  const students = alphabeticalStudents(state.students);
+  const matchingStudents = students.filter((student) => student.name.toLowerCase().includes(term));
+  return `${heading('Students', 'Add, update, or deactivate students.', '<button class="button primary" data-action="open-student" type="button">＋ Add student</button>')}<section class="panel"><div class="filters"><label class="field">Search students<input data-filter="search" value="${escapeHtml(state.filters.search)}" placeholder="Search by name" /></label></div><div class="table-wrap"><table><thead><tr><th>Student</th><th>Grade</th><th>Status</th><th>Tickets</th><th></th></tr></thead><tbody>${students.map((student) => `<tr data-student-row data-student-name="${escapeHtml(student.name.toLowerCase())}" ${student.name.toLowerCase().includes(term) ? '' : 'hidden'}><td class="student-name">${escapeHtml(student.name)}</td><td>Grade ${student.grade}</td><td><span class="status ${student.active ? 'active' : 'inactive'}">${student.active ? 'Active' : 'Inactive'}</span></td><td class="balance">${student.balance}</td><td><button class="button secondary small" data-action="toggle-student" data-student="${student.id}" type="button">${student.active ? 'Deactivate' : 'Reactivate'}</button></td></tr>`).join('')}<tr class="empty" data-student-empty ${matchingStudents.length ? 'hidden' : ''}><td colspan="5">No students match your search.</td></tr></tbody></table></div></section>`;
 }
 function prizesPage() {
   return `${heading('Prize catalog', 'Set ticket costs and redeem rewards for students.', '<button class="button primary" data-action="open-prize" type="button">＋ Add prize</button>')}<div class="prize-grid">${state.prizes.map((prize) => `<article class="prize-card"><div class="prize-icon">${prize.icon}</div><h2>${escapeHtml(prize.name)}</h2><p>${escapeHtml(prize.description)}</p><div class="prize-cost">${prize.cost} tickets</div><div class="prize-footer"><span class="stock">${prize.stock} remaining</span><button class="button secondary small" data-action="open-redeem" data-prize="${prize.id}" type="button" ${prize.stock === 0 ? 'disabled' : ''}>Redeem</button></div></article>`).join('')}</div>`;
@@ -197,13 +198,15 @@ app.addEventListener('click', async (event) => {
   const action = button.dataset.action;
   try {
     if (action === 'logout') { clearAuth(); render(); return; }
-    if (action === 'quick-add') {
+    if (action === 'quick-add' || action === 'quick-deduct') {
       const student = studentById(button.dataset.student);
       const amount = Number(button.dataset.amount);
-      if (liveMode) await apiRequest('/ticket-events', { method: 'POST', body: JSON.stringify({ studentId: student.id, amount, reason: 'Quick ticket award' }) });
-      else addEvent(student.id, amount, 'Quick ticket award');
+      const isDeduction = action === 'quick-deduct';
+      if (!liveMode && isDeduction && student.balance < amount) throw new Error(`${student.name} only has ${student.balance} tickets.`);
+      if (liveMode) await apiRequest(isDeduction ? '/ticket-deductions' : '/ticket-events', { method: 'POST', body: JSON.stringify({ studentId: student.id, amount, reason: isDeduction ? 'Quick ticket deduction' : 'Quick ticket award' }) });
+      else addEvent(student.id, isDeduction ? -amount : amount, isDeduction ? 'Quick ticket deduction' : 'Quick ticket award', isDeduction ? 'deduct' : 'earn');
       if (liveMode) await refreshLiveData(); else render();
-      toast(`${amount} ticket${amount === 1 ? '' : 's'} added to ${student.name}`);
+      toast(`${amount} ticket${amount === 1 ? '' : 's'} ${isDeduction ? 'deducted from' : 'added to'} ${student.name}`);
     }
     if (action === 'open-adjust') { state.modal = { kind: 'adjust', studentId: button.dataset.student || state.students.find((student) => student.active).id }; render(); }
     if (action === 'open-deduct') { state.modal = { kind: 'deduct', studentId: state.students.find((student) => student.active).id }; render(); }
@@ -223,7 +226,20 @@ app.addEventListener('click', async (event) => {
     if (action === 'export-history') downloadCsv();
   } catch (error) { toast(error.message); }
 });
-app.addEventListener('input', (event) => { if (event.target.dataset.filter === 'search') { state.filters.search = event.target.value; render(); } });
+function refreshStudentSearch(searchInput) {
+  state.filters.search = searchInput.value;
+  const term = state.filters.search.toLowerCase();
+  let matches = 0;
+  app.querySelectorAll('[data-student-row]').forEach((row) => {
+    const isMatch = row.dataset.studentName.includes(term);
+    row.hidden = !isMatch;
+    if (isMatch) matches += 1;
+  });
+  const emptyRow = app.querySelector('[data-student-empty]');
+  if (emptyRow) emptyRow.hidden = matches !== 0;
+}
+
+app.addEventListener('input', (event) => { if (event.target.dataset.filter === 'search') refreshStudentSearch(event.target); });
 app.addEventListener('change', (event) => { if (event.target.dataset.filter) { state.filters[event.target.dataset.filter] = event.target.value; render(); } });
 app.addEventListener('submit', async (event) => {
   event.preventDefault();
